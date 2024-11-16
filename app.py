@@ -9,7 +9,7 @@ import dlib
 from scipy.spatial import distance as dist
 
 # Load YOLO model
-model = YOLO("best.pt")
+model = YOLO("yolo.pt")
 box_annotator = BoxAnnotator()  # Initialize without labels
 
 drowsiness_score = 0  # Score to determine drowsiness
