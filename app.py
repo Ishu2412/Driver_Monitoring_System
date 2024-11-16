@@ -2,14 +2,14 @@ import cv2
 import supervision as sv
 from ultralytics import YOLO
 from supervision import BoxAnnotator
-import winsound
+import threading
 import time
 import numpy as np
 import dlib
 from scipy.spatial import distance as dist
 
 # Load YOLO model
-model = YOLO("yolo.pt")
+model = YOLO("best.pt")
 box_annotator = BoxAnnotator()  # Initialize without labels
 
 drowsiness_score = 0  # Score to determine drowsiness
@@ -21,6 +21,7 @@ alarm_status2 = False
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor('shape_predictor_68_face_landmarks.dat')
 
+
 def lip_distance(shape):
     top_lip = shape[50:53]
     top_lip = np.concatenate((top_lip, shape[61:64]))
@@ -31,12 +32,20 @@ def lip_distance(shape):
     distance = abs(top_mean[1] - low_mean[1])
     return distance
 
+
+def play_beep():
+    """Plays a beep sound in a separate thread."""
+    winsound.Beep(1000, 5000)  # Beep sound with frequency 1000 Hz and duration 5000 ms
+
+
 def main():
     global drowsiness_score, alarm_status2
-    
+
     cam = cv2.VideoCapture(0)
-    if not cam.isOpened(): 
-        print("cam is not opened")
+    if not cam.isOpened():
+        print("Camera is not opened")
+        return
+
     while cam.isOpened():
         success, frame = cam.read()
         if success:
@@ -68,7 +77,7 @@ def main():
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
                     if not alarm_status2:
                         alarm_status2 = True
-                        winsound.Beep(1000, 5000)  # Beep sound with frequency 1000 Hz and duration 500 ms
+                        threading.Thread(target=play_beep).start()  # Run beep sound in a separate thread
                 else:
                     alarm_status2 = False
 
@@ -78,7 +87,7 @@ def main():
                 label = f"{model.model.names[class_id]}: {confidence:.2f}"
                 detected_labels.append(model.model.names[class_id])
                 (x_min, y_min, x_max, y_max) = map(int, box)
-                
+
                 # Add text above the bounding box
                 cv2.putText(annotated_frame, label, (x_min, y_min - 10),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
@@ -93,7 +102,7 @@ def main():
             if drowsiness_score >= DROWSINESS_THRESHOLD:
                 cv2.putText(annotated_frame, "DROWSINESS DETECTED", (50, 50),
                             cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 3)
-                winsound.Beep(1000, 5000)  # Beep sound with frequency 1000 Hz and duration 500 ms
+                threading.Thread(target=play_beep).start()  # Run beep sound in a separate thread
                 drowsiness_score = 0
 
             # Display detections for specific labels
@@ -112,9 +121,10 @@ def main():
 
         else:
             raise Exception("Can't Open Camera")
-    
+
     cam.release()
     cv2.destroyAllWindows()
+
 
 if __name__ == "__main__":
     main()
